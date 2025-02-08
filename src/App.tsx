@@ -22,8 +22,12 @@ import {
 import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
+import { Lightning } from './components/Explosion';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 
 const App: React.FC = () => {
+  const deviceTheme = useTheme();
   const [aliceData, setAliceData] = useState<(number | null)[]>([
     null,
     null,
@@ -48,9 +52,13 @@ const App: React.FC = () => {
   const [bobName, setBobName] = useState<string>('Bob');
 
   const cards = Array.from({ length: 12 }, (_, i) => i + 1);
-  const containerSize = 400; // コンテナのサイズ（px）
-  const radius = 150; // 円の半径（px）
-  const cardSize = 50;
+  const isMobile = useMediaQuery(deviceTheme.breakpoints.down('sm'));
+
+  // デバイスの幅によってサイズを調整
+  const containerSize = isMobile ? 300 : 400; // 例：モバイルは250px、デスクトップは400px
+  const cardSize = containerSize * 0.2; // カードサイズはコンテナサイズの20%
+  const radius = containerSize * 0.4; // 半径もコンテナサイズに連動させる
+  // const cardSize = 50;
   const data = [
     {
       name: 'Alice',
@@ -74,6 +82,7 @@ const App: React.FC = () => {
   const [gameOverMessage, setGameOverMessage] = useState<string>('');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isGameEnded, setIsGameEnded] = useState<boolean>(false);
+  const [showExplosion, setShowExplosion] = useState(false);
 
   const theme = createTheme({
     palette: {
@@ -84,14 +93,14 @@ const App: React.FC = () => {
         light: '#64b5f6',
       },
       secondary: {
-        main: '#f3e074',
+        main: '#e9d770',
         dark: '#11c571',
         light: '#ff4081',
         contrastText: '#353030',
       },
       background: {
         default: isDarkMode ? '#121212' : '#f5f5f5',
-        paper: isDarkMode ? '#1e1e1e' : '#ffffff',
+        paper: isDarkMode ? '#1e1e1e' : '#fafafa',
       },
       text: {
         primary: isDarkMode ? '#ffffff' : '#000000',
@@ -123,6 +132,16 @@ const App: React.FC = () => {
         `${loser === aliceName ? bobName : aliceName}が40点以上獲得しました！`
       );
     }
+    if (reason === 'AliceFinalWinner') {
+      setGameOverMessage(
+        `${loser === aliceName ? bobName : aliceName}が得点差で勝利しました！`
+      );
+    }
+    if (reason === 'BobFinalWinner') {
+      setGameOverMessage(
+        `${loser === aliceName ? bobName : aliceName}が得点差で勝利しました！`
+      );
+    }
 
     setIsGameOver(true);
     setIsGameEnded(true);
@@ -144,7 +163,6 @@ const App: React.FC = () => {
   };
   const choiceThunder = () => {
     let updatedAliceData = aliceData;
-
     let updatedBobData = bobData;
 
     if (turnPlayer === 'Alice') {
@@ -153,10 +171,15 @@ const App: React.FC = () => {
       updatedBobData = setPoint();
     }
 
+    if (currentThunder === selectedCard) {
+      setShowExplosion(true);
+    }
+
     const { isGameOver, loser, reason } = checkGameOver(
       updatedAliceData,
       updatedBobData
     );
+
     if (isGameOver) {
       handleGameOver(loser, reason);
     }
@@ -227,256 +250,286 @@ const App: React.FC = () => {
       return { isGameOver: true, loser: aliceName, reason: 'BobWinner' };
     }
 
+    if (turnPlayer === 'Bob' && turn === 'Bob' && round === 8) {
+      const scoreCompareResult =
+        aliceScores > bobScores
+          ? { isGameOver: true, loser: bobName, reason: 'BobFinalWinner' }
+          : { isGameOver: true, loser: aliceName, reason: 'AliceFinalWinner' };
+      return scoreCompareResult;
+    }
+
     return { isGameOver: false, loser: '', reason: '' };
+  };
+
+  const handleExplosionEnd = () => {
+    setShowExplosion(false);
+  };
+
+  const handleConfirm = () => {
+    choiceThunder();
   };
 
   return (
     <ThemeProvider theme={theme}>
-      <Box sx={{ bgcolor: 'background.default', width: '100%' }}>
-        <Container maxWidth="lg" style={{ marginTop: '2rem' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-            <Button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              startIcon={isDarkMode ? <LightModeIcon /> : <DarkModeIcon />}
-            >
-              {isDarkMode ? 'ライトモード' : 'ダークモード'}
-            </Button>
-          </Box>
-          <Box>
-            <Typography
-              variant="h3"
-              component="h1"
-              align="center"
-              gutterBottom
-              sx={{ color: 'text.primary' }}
-            >
-              電気椅子ゲーム
-            </Typography>
-            <Typography
-              variant="h6"
-              component="h1"
-              align="center"
-              gutterBottom
-              sx={{ color: 'text.primary' }}
-            >
-              {`${
-                turnPlayer === 'Alice'
-                  ? turn === 'Alice'
-                    ? bobName
-                    : aliceName
-                  : turn === 'Alice'
-                  ? aliceName
-                  : bobName
-              }が${
-                phase === 'SET_THUNDER'
-                  ? '電気椅子を設定中'
-                  : '電気椅子を選択中'
-              }`}
-            </Typography>
-          </Box>
-          {/* <Typography variant="h6" component="h6" align="center" gutterBottom>
-            IsGameOver:{isGameOver ? 'True' : 'False'}
-          </Typography> */}
+      <Box
+        sx={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          paddingTop: 'env(safe-area-inset-top)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}
+      >
+        <Box sx={{ bgcolor: 'background.default', width: '100%' }}>
+          <Container maxWidth="lg" sx={{ minHeight: '100vh' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+              <Button
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                startIcon={isDarkMode ? <LightModeIcon /> : <DarkModeIcon />}
+              >
+                {isDarkMode ? 'ライトモード' : 'ダークモード'}
+              </Button>
+            </Box>
+            <Box>
+              <Typography
+                variant={isMobile ? 'h5' : 'h3'}
+                component="h1"
+                align="center"
+                gutterBottom
+                sx={{ color: 'text.primary' }}
+              >
+                電気椅子ゲーム
+              </Typography>
+              <Typography
+                variant={isMobile ? 'h6' : 'h6'}
+                component="h1"
+                align="center"
+                gutterBottom
+                sx={{ color: 'text.primary' }}
+              >
+                {`${
+                  turnPlayer === 'Alice'
+                    ? turn === 'Alice'
+                      ? bobName
+                      : aliceName
+                    : turn === 'Alice'
+                    ? aliceName
+                    : bobName
+                }が${
+                  phase === 'SET_THUNDER'
+                    ? '電気椅子を設定中'
+                    : '電気椅子を選択中'
+                }`}
+              </Typography>
+            </Box>
 
-          {/* <Typography variant="h6" component="h6" align="center" gutterBottom>
-            ターン:{turn}
-          </Typography>
-          <Typography variant="h6" component="h6" align="center" gutterBottom>
-            電気椅子:{currentThunder}
-          </Typography>
-          <Typography variant="h6" component="h6" align="center" gutterBottom>
-            Phase:{phase}
-          </Typography>
-          <Typography variant="h6" component="h6" align="center" gutterBottom>
-            ラウンド:{round}
-          </Typography>
-          <Typography variant="h6" component="h6" align="center" gutterBottom>
-            ターンプレイヤー:{turnPlayer}
-          </Typography>
-          <Typography variant="h6" component="h6" align="center" gutterBottom>
-            選択カード:{selectedCard}
-          </Typography>
-          <Typography variant="h6" component="h6" align="center" gutterBottom>
-            選択電気椅子:{selectedThunder}
-          </Typography> */}
-
-          <TableContainer component={Paper}>
-            <Table
-              aria-label="シンプルな表"
-              sx={{ bgcolor: 'background.paper' }}
+            <TableContainer
+              component={Paper}
+              sx={{ maxWidth: 700, margin: '0 auto' }}
             >
-              <TableHead>
-                <TableRow>
-                  <TableCell rowSpan={2}>プレイヤー</TableCell>
-                  {Array.from({ length: 8 }, (_, idx) => (
-                    <TableCell
-                      align="right"
-                      key={`header-score-${idx}`}
-                      sx={{ color: 'text.primary' }}
-                    >
-                      {idx + 1}
-                    </TableCell>
-                  ))}
-                  <TableCell
-                    align="right"
-                    key={`header-score-9`}
-                    sx={{ color: 'text.primary' }}
-                  >
-                    合計
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {data.map((row, rowIndex) => (
-                  <TableRow key={`rowIndex-${rowIndex}`}>
-                    <TableCell
-                      component="th"
-                      scope="row"
-                      sx={{
-                        width: '20%',
-                        color: 'text.primary',
-                      }}
-                    >
-                      <TextField
-                        label={`Player${rowIndex + 1}`}
-                        value={row.displayedName}
-                        onChange={(e) => {
-                          row.setName(e.target.value);
-                        }}
-                        variant="standard"
-                        sx={{ color: 'text.primary' }}
-                      />
-                    </TableCell>
-                    {row.data.map((value, colIndex) => (
+              <Table
+                aria-label="シンプルな表"
+                sx={
+                  isMobile
+                    ? {
+                        bgcolor: 'background.paper',
+                        '& .MuiTableCell-root': {
+                          padding: '0px 0px', // 必要に応じてパディングを調整
+                        },
+                      }
+                    : {
+                        bgcolor: 'background.paper',
+                      }
+                }
+                size={isMobile ? 'small' : 'medium'}
+              >
+                <TableHead>
+                  <TableRow>
+                    <TableCell rowSpan={1}>Player</TableCell>
+                    {Array.from({ length: 8 }, (_, idx) => (
                       <TableCell
                         align="right"
-                        key={`row-${rowIndex}-col-${colIndex}`}
-                        sx={{
-                          backgroundColor:
-                            row.name === turnPlayer && round === colIndex + 1
-                              ? isDarkMode
-                                ? '#1a365d'
-                                : '#d1f5f9'
-                              : 'background.paper',
-                          width: '8%',
-                          color: 'text.primary',
-                        }}
+                        key={`header-score-${idx}`}
+                        sx={{ color: 'text.primary' }}
                       >
-                        {value !== null ? (
-                          value > 0 ? (
-                            value
-                          ) : (
-                            <ElectricBoltIcon sx={{ color: '#ead154' }} />
-                          )
-                        ) : null}
+                        {idx + 1}
                       </TableCell>
                     ))}
                     <TableCell
                       align="right"
                       key={`header-score-9`}
-                      sx={{
-                        width: '8%',
-                        color: 'text.primary',
-                      }}
+                      sx={{ color: 'text.primary' }}
                     >
-                      {row.data
-                        .filter((score): score is number => score !== null)
-                        .reduce((acc, score) => acc + score, 0)}
+                      合計
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-          <Box
-            sx={{
-              position: 'relative',
-              width: containerSize,
-              height: containerSize,
-              margin: '0 auto',
-              borderRadius: '50%',
-              mt: 10,
-            }}
-          >
-            {cards.map((num, idx) => {
-              // カード1を上に配置するように -π/2 を加算
-              const angle = ((2 * Math.PI) / 12) * idx - Math.PI / 2;
-              const x =
-                containerSize / 2 + radius * Math.cos(angle) - cardSize / 2;
-              const y =
-                containerSize / 2 + radius * Math.sin(angle) - cardSize / 2;
-              return (
+                </TableHead>
+                <TableBody>
+                  {data.map((row, rowIndex) => (
+                    <TableRow key={`rowIndex-${rowIndex}`}>
+                      <TableCell
+                        component="th"
+                        scope="row"
+                        sx={{
+                          width: '20%',
+                          color: 'text.primary',
+                        }}
+                      >
+                        <TextField
+                          label={`Player${rowIndex + 1}`}
+                          value={row.displayedName}
+                          onChange={(e) => {
+                            row.setName(e.target.value);
+                          }}
+                          variant="standard"
+                          sx={{ color: 'text.primary' }}
+                        />
+                      </TableCell>
+                      {row.data.map((value, colIndex) => (
+                        <TableCell
+                          align="right"
+                          key={`row-${rowIndex}-col-${colIndex}`}
+                          sx={{
+                            backgroundColor:
+                              row.name === turnPlayer && round === colIndex + 1
+                                ? isDarkMode
+                                  ? '#1a365d'
+                                  : '#d1f5f9'
+                                : 'background.paper',
+                            width: '8%',
+                            color: 'text.primary',
+                          }}
+                        >
+                          {value !== null ? (
+                            value > 0 ? (
+                              value
+                            ) : (
+                              <ElectricBoltIcon sx={{ color: '#ead154' }} />
+                            )
+                          ) : null}
+                        </TableCell>
+                      ))}
+                      <TableCell
+                        align="right"
+                        key={`header-score-9`}
+                        sx={{
+                          width: '8%',
+                          color: 'text.primary',
+                        }}
+                      >
+                        {row.data
+                          .filter((score): score is number => score !== null)
+                          .reduce((acc, score) => acc + score, 0)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <Box
+              sx={{
+                position: 'relative',
+                width: containerSize,
+                height: containerSize,
+                margin: '0 auto',
+                borderRadius: '50%',
+                mt: 2,
+              }}
+            >
+              {cards.map((num, idx) => {
+                // カード1を上に配置するように -π/2 を加算
+                const angle = ((2 * Math.PI) / 12) * idx - Math.PI / 2;
+                const x =
+                  containerSize / 2 + radius * Math.cos(angle) - cardSize / 2;
+                const y =
+                  containerSize / 2 + radius * Math.sin(angle) - cardSize / 2;
+                return (
+                  <Box sx={{ p: 0 }}>
+                    <Button
+                      key={`card-${idx}-${num}`}
+                      variant="outlined"
+                      disabled={usedCards.includes(num)}
+                      sx={{
+                        position: 'absolute',
+                        width: cardSize,
+                        height: cardSize,
+                        left: x,
+                        top: y,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor:
+                          selectedCard === num
+                            ? 'primary.main'
+                            : 'background.paper',
+                        color: selectedCard === num ? 'white' : 'primary.main',
+                        alignContent: 'center',
+                        borderRadius: '100%',
+                        fontSize: '1.2rem',
+                        fontWeight: 'bold',
+                        '&.Mui-disabled': {
+                          color: isDarkMode ? 'grey.800' : 'grey.300',
+                        },
+                      }}
+                      onClick={() => setSelectedCard(num)}
+                    >
+                      {num}
+                    </Button>
+                  </Box>
+                );
+              })}
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+              {!isGameEnded && phase === 'SET_THUNDER' && (
                 <Button
-                  key={`card-${idx}-${num}`}
-                  variant="outlined"
-                  disabled={usedCards.includes(num)}
-                  sx={{
-                    position: 'absolute',
-                    width: cardSize,
-                    height: cardSize,
-                    left: x,
-                    top: y,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor:
-                      selectedCard === num ? 'primary.main' : 'transparent',
-                    color: selectedCard === num ? 'white' : 'primary.main',
-                  }}
-                  onClick={() => setSelectedCard(num)}
+                  size="large"
+                  disabled={!selectedCard}
+                  variant="contained"
+                  color="secondary"
+                  onClick={() => setThunder()}
+                  sx={{ width: '200px' }}
                 >
-                  <Typography variant="body2" align="center">
-                    {num}
-                  </Typography>
+                  電気椅子を設定
                 </Button>
-              );
-            })}
-          </Box>
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-            {!isGameEnded && phase === 'SET_THUNDER' && (
-              <Button
-                size="large"
-                disabled={!selectedCard}
-                variant="contained"
-                color="secondary"
-                onClick={() => setThunder()}
-                sx={{ width: '200px' }}
-              >
-                電気椅子を設定
-              </Button>
+              )}
+              {!isGameEnded && phase === 'CHOICE_THUNDER' && (
+                <Button
+                  size="large"
+                  disabled={!selectedCard}
+                  variant="contained"
+                  color="secondary"
+                  onClick={handleConfirm}
+                  sx={{ width: '200px' }}
+                >
+                  確定
+                </Button>
+              )}
+              {isGameEnded && (
+                <Button
+                  size="large"
+                  variant="contained"
+                  color="error"
+                  onClick={() => resetGame()}
+                  sx={{ width: '200px' }}
+                >
+                  リセット
+                </Button>
+              )}
+            </Box>
+            {showExplosion && (
+              <Lightning onAnimationComplete={handleExplosionEnd} />
             )}
-            {!isGameEnded && phase === 'CHOICE_THUNDER' && (
-              <Button
-                size="large"
-                disabled={!selectedCard}
-                variant="contained"
-                color="secondary"
-                onClick={() => choiceThunder()}
-                sx={{ width: '200px' }}
-              >
-                確定
-              </Button>
-            )}
-            {isGameEnded && (
-              <Button
-                size="large"
-                variant="contained"
-                color="error"
-                onClick={() => resetGame()}
-                sx={{ width: '200px' }}
-              >
-                リセット
-              </Button>
-            )}
-          </Box>
-          <Dialog open={isGameOver} onClose={() => setIsGameOver(false)}>
-            <DialogTitle>ゲーム終了！</DialogTitle>
-            <DialogContent>{gameOverMessage}</DialogContent>
-            <DialogActions>
-              <Button onClick={() => setIsGameOver(false)}>閉じる</Button>
-            </DialogActions>
-          </Dialog>
-        </Container>
+            <Dialog open={isGameOver} onClose={() => setIsGameOver(false)}>
+              <DialogTitle>ゲーム終了！</DialogTitle>
+              <DialogContent>{gameOverMessage}</DialogContent>
+              <DialogActions>
+                <Button onClick={() => setIsGameOver(false)}>閉じる</Button>
+              </DialogActions>
+            </Dialog>
+          </Container>
+        </Box>
       </Box>
     </ThemeProvider>
   );
