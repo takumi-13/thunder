@@ -22,7 +22,7 @@ import {
 import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
-import { Lightning } from './components/Explosion';
+import { Lightning } from './components/Effect';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 
