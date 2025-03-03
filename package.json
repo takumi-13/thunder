@@ -7,13 +7,16 @@
     "dev": "vite --host --port 8080",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node server.js"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^6.4.3",
     "@mui/material": "^6.4.3",
+    "express": "^4.21.2",
+    "framer-motion": "^12.4.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
